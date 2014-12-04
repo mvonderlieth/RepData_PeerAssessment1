@@ -1,0 +1,126 @@
+# author mvonderlieth
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+
+# main logic is in the main() function at the end of file
+## support functions
+# make plot
+makePlot <- function(d,mn,md) {
+    meanText = paste("Mean =", as.integer(mn))
+    medianText = paste("Median =", as.integer(md))
+    
+    p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
+        #         geom_smooth() +
+        # #         geom_line() +
+        geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
+        geom_abline(slope = 0, intercept = mn, color = "red") +
+        geom_abline(slope = 0, intercept = md, color = "blue") +
+        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day\n(note mean and median lines may be very close to each other)")) +
+        annotate("text", label = meanText, x = as.POSIXct("2012-10-25"), y = 17000, size = 4, colour = "red") +
+        annotate("text", label = medianText, x = as.POSIXct("2012-10-25"), y = 16000, size = 4, colour = "blue")
+    
+    return (p)
+}
+
+# plot on screen
+plotOnScreen <- function(d,mn,md) {
+    p = makePlot(d,mn,md)
+    print(p)
+    return(p)
+}
+
+# plot to png file
+plotOnDevice <- function(p) {
+    png(filename = "./figure/hist1.png", width = 480, height = 480)
+    print(p)
+    dev.off()
+}
+
+# build the data set we need
+buildData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        group_by(date) %>%
+        summarise(stepsTotal = sum(steps)) %>%
+        mutate(datePosix=as.POSIXct(strptime(date, format = "%Y-%m-%d")))
+    return(d)
+}
+
+buildNoNAData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(steps = ifelse(is.na(steps), as.integer(mean(steps, na.rm=TRUE)), steps))
+    return(d)
+}
+
+# load the data into tmp if not there already,
+#  and once it's there, if not test use full data, else just use sample data
+loadCsvData <- function(dataFile,test) {
+    if (!exists("FullDataFromSource")) {
+        FullDataFromSource <<- read.csv(dataFile)
+    }
+
+    # for design phase just test with small data set
+    if (!test) {
+        WorkingDataFromSource <<- FullDataFromSource
+    } else {
+        # try to keep the same sample set
+        if (!exists("WorkingDataFromSource_sample")) {
+            WorkingDataFromSource_sample <<- FullDataFromSource %>% sample_n(10)
+            WorkingDataFromSource <<- WorkingDataFromSource_sample
+        }
+    }
+}
+
+## main
+main <- function() {
+    # when testing data may not represent full set of data.
+    dataFile = "./activity.csv"
+    test = FALSE
+    
+    if (file.exists(dataFile)) {
+        # load data as globals
+        loadCsvData(dataFile,test)
+
+#         par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+        
+        #build analyis data
+        # want this to be a global so I can view it after a run
+        analysisData <<- buildData(WorkingDataFromSource)
+        stepsMean = mean(analysisData$stepsTotal, na.rm=TRUE)
+        stepsMedian = median(analysisData$stepsTotal, na.rm=TRUE)
+        
+        #plot on screen
+        p = plotOnScreen(analysisData, stepsMean, stepsMedian)
+
+#         analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
+#         analysisData <<- buildData(analysisNoNAData)
+#         p = plotOnScreen(analysisData)
+
+        # create plot on file device, close when done
+        plotOnDevice(p)
+        
+#         par(mfrow = c(1, 1))
+    }
+    else {
+        warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
+    }
+}
+
+### run main
+main()
+
+#mean(FullDataFromSource$steps, na.rm=TRUE)
+#median(FullDataFromSource$steps, na.rm=TRUE)
+#sd(FullDataFromSource$steps, na.rm=TRUE)
+
+# Mode <- function(x) {
+#     ux <- unique(x)
+#     ux[which.max(tabulate(match(x, ux)))]
+# }
+# Mode(FullDataFromSource$steps)
+
+#proof that median is zero!
+# stepsOrdered = FullDataFromSource %>% filter(!is.na(steps)) %>% arrange(steps)
+# dim(stepsOrdered)
+# stepsOrdered[15264/2,]
