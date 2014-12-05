@@ -10,6 +10,10 @@ library(ggplot2)
 makePlot <- function(d,mn,md) {
     meanText = paste("Mean =", as.integer(mn))
     medianText = paste("Median =", as.integer(md))
+    xxx = d[[1,3]]
+    textDate = ymd(analysisData$date[1])
+    textMedianY = max(analysisData$stepsTotal)
+    textMeanY = textMedianY - 1000
     
     p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
         #         geom_smooth() +
@@ -17,9 +21,10 @@ makePlot <- function(d,mn,md) {
         geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
         geom_abline(slope = 0, intercept = mn, color = "red") +
         geom_abline(slope = 0, intercept = md, color = "blue") +
-        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day\n(note mean and median lines may be very close to each other)")) +
-        annotate("text", label = meanText, x = as.POSIXct("2012-10-25"), y = 17000, size = 4, colour = "red") +
-        annotate("text", label = medianText, x = as.POSIXct("2012-10-25"), y = 16000, size = 4, colour = "blue")
+        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day")) +
+        annotate("text", label = medianText, x = textDate, y = textMedianY, size = 4, colour = "blue", adj = 0) +
+        annotate("text", label = meanText, x = textDate, y = textMeanY, size = 4, colour = "red", adj = 0)
+    
     
     return (p)
 }
@@ -42,8 +47,9 @@ plotOnDevice <- function(p) {
 buildData <- function(dataFromSource) {
     d = dataFromSource %>%
         group_by(date) %>%
-        summarise(stepsTotal = sum(steps)) %>%
-        mutate(datePosix=as.POSIXct(strptime(date, format = "%Y-%m-%d")))
+        summarise(stepsTotal = sum(steps,na.rm=TRUE)) %>%
+        mutate(datePosix=ymd(date))
+    
     return(d)
 }
 
@@ -59,7 +65,7 @@ loadCsvData <- function(dataFile,test) {
     if (!exists("FullDataFromSource")) {
         FullDataFromSource <<- read.csv(dataFile)
     }
-
+    
     # for design phase just test with small data set
     if (!test) {
         WorkingDataFromSource <<- FullDataFromSource
@@ -81,8 +87,8 @@ main <- function() {
     if (file.exists(dataFile)) {
         # load data as globals
         loadCsvData(dataFile,test)
-
-#         par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+        
+        #         par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
         
         #build analyis data
         # want this to be a global so I can view it after a run
@@ -92,15 +98,15 @@ main <- function() {
         
         #plot on screen
         p = plotOnScreen(analysisData, stepsMean, stepsMedian)
-
-#         analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
-#         analysisData <<- buildData(analysisNoNAData)
-#         p = plotOnScreen(analysisData)
-
+        
+        #         analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
+        #         analysisData <<- buildData(analysisNoNAData)
+        #         p = plotOnScreen(analysisData)
+        
         # create plot on file device, close when done
         plotOnDevice(p)
         
-#         par(mfrow = c(1, 1))
+        #         par(mfrow = c(1, 1))
     }
     else {
         warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
@@ -124,3 +130,4 @@ main()
 # stepsOrdered = FullDataFromSource %>% filter(!is.na(steps)) %>% arrange(steps)
 # dim(stepsOrdered)
 # stepsOrdered[15264/2,]
+#t = WorkingDataFromSource %>% arrange(interval) %>% group_by(interval) %>% summarise(count=n(), intervalStepsMean=mean(steps, na.rm=TRUE), intervalStepsMedian=median(steps, na.rm=TRUE), totalSteps=sum(steps,na.rm=TRUE))
