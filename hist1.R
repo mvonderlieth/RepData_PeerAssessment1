@@ -73,7 +73,7 @@ buildNoNAData <- function(dataFromSource) {
 
 ## analysis plot functions
 # plot histogtram of mean total number of steps per day
-plotHistMeanStepsPerDay <- function(d) {
+plotHistMeanStepsPerDay <- function(d, addToTitle) {
     mn = mean(d$stepsTotal, na.rm=TRUE)
     md = median(d$stepsTotal, na.rm=TRUE)
     meanText = paste0("Mean = ", as.integer(mn))
@@ -86,7 +86,7 @@ plotHistMeanStepsPerDay <- function(d) {
         geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
         geom_abline(slope = 0, intercept = mn, color = "red") +
         geom_abline(slope = 0, intercept = md, color = "blue") +
-        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day (NA's not removed)")) +
+        labs(list(x ="Date",y ="Number of Steps", title=paste("Total Steps Per Day (",addToTitle, ")"))) +
         annotate("text", label = medianText, x = textDate, y = textMedianY, size = 4, colour = "blue", adj = 0) +
         annotate("text", label = meanText, x = textDate, y = textMeanY, size = 4, colour = "red", adj = 0)
     
@@ -121,22 +121,19 @@ main <- function() {
         # load data as globals
         loadCsvData(dataFile,test=FALSE,testSampleSize=1000)
         
-        #build analyis data
-        analysisNAData <<- buildDataDayNA(WorkingDataFromSource)
-        p = plotOnScreen(plotHistMeanStepsPerDay, analysisNAData)
+        #build analyis data for mean steps per day
+        analysisData <<- buildDataDayNA(WorkingDataFromSource)
+        p = plotOnScreen(plotHistMeanStepsPerDay, analysisData, "NA's not removed")
+
+        #build analysis data for mean steps per interval
+        analysisData <<- buildDataIntervalNA(WorkingDataFromSource)
+        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, analysisData)
         
-        analysisNAData <<- buildDataIntervalNA(WorkingDataFromSource)
-        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, analysisNAData)
-        
-        
-        #         analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
-        #         analysisData <<- buildData(analysisNoNAData)
-        #         p = plotOnScreen(analysisData)
-        
-        # create plot on file device, close when done
-        #         plotOnDevice(p)
-        
-        #         par(mfrow = c(1, 1))
+        #build analyis data for imputed missing value
+        analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
+        #NA's are removed but resuse method
+        analysisData <<- buildDataDayNA(analysisNoNAData)
+        p = plotOnScreen(plotHistMeanStepsPerDay, analysisData, "NA's removed")
     }
     else {
         warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
