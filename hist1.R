@@ -76,15 +76,13 @@ buildNoNAData <- function(dataFromSource) {
 plotHistMeanStepsPerDay <- function(d) {
     mn = mean(d$stepsTotal, na.rm=TRUE)
     md = median(d$stepsTotal, na.rm=TRUE)
-    meanText = paste("Mean =", as.integer(mn))
-    medianText = paste("Median =", as.integer(md))
+    meanText = paste0("Mean = ", as.integer(mn))
+    medianText = paste0("Median = ", as.integer(md))
     textDate = ymd(d$date[1])
     textMedianY = max(d$stepsTotal)
     textMeanY = textMedianY - (textMedianY * .05)
     
     p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
-        #         geom_smooth() +
-        # #         geom_line() +
         geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
         geom_abline(slope = 0, intercept = mn, color = "red") +
         geom_abline(slope = 0, intercept = md, color = "blue") +
@@ -98,10 +96,9 @@ plotHistMeanStepsPerDay <- function(d) {
 # plot time series of average daily activity pattern
 plotTimeSeriesMeanStepsPerDay <- function(d) {
     mx = max(d$meanIntervalSteps, na.rm = TRUE)
-    # kind of iffy but get interval with max in it
-    tmp = d$interval[analysisNAData$meanIntervalSteps == mx]
+    tmp = d$interval[d$meanIntervalSteps == mx]
     mxInterval = tmp[!is.na(tmp)]
-    maxText = paste("Max =", mx, " Interval=", mxInterval)
+    maxText = paste0("Max = ", as.integer(mx), ", Interval = ", mxInterval)
     textMaxX = d$interval[1]
     textMaxY = mx - (mx * .05)
     
@@ -122,7 +119,7 @@ main <- function() {
     
     if (file.exists(dataFile)) {
         # load data as globals
-        loadCsvData(dataFile,test=TRUE,testSampleSize=1000)
+        loadCsvData(dataFile,test=FALSE,testSampleSize=1000)
         
         #build analyis data
         analysisNAData <<- buildDataDayNA(WorkingDataFromSource)
