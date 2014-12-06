@@ -6,28 +6,6 @@ library(ggplot2)
 
 # main logic is in the main() function at the end of file
 ## support functions
-# make plot
-plotHistMeanStepsPerDay <- function(d,mn,md) {
-    meanText = paste("Mean =", as.integer(mn))
-    medianText = paste("Median =", as.integer(md))
-    textDate = ymd(d$date[1])
-    textMedianY = max(d$stepsTotal)
-    textMeanY = textMedianY - (textMedianY * .075)
-    
-    p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
-        #         geom_smooth() +
-        # #         geom_line() +
-        geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
-        geom_abline(slope = 0, intercept = mn, color = "red") +
-        geom_abline(slope = 0, intercept = md, color = "blue") +
-        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day (NA's not removed)")) +
-        annotate("text", label = medianText, x = textDate, y = textMedianY, size = 4, colour = "blue", adj = 0) +
-        annotate("text", label = meanText, x = textDate, y = textMeanY, size = 4, colour = "red", adj = 0)
-    
-    
-    return (p)
-}
-
 # plot on screen
 plotOnScreen <- function(plotFunction,...) {
     p = plotFunction(...)
@@ -42,22 +20,8 @@ plotOnDevice <- function(p) {
     dev.off()
 }
 
-# build the data set we need
-buildNAData <- function(dataFromSource) {
-    d = dataFromSource %>%
-        group_by(date) %>%
-        summarise(stepsTotal = sum(steps,na.rm=TRUE)) %>%
-        mutate(datePosix=ymd(date))
-    
-    return(d)
-}
 
-buildNoNAData <- function(dataFromSource) {
-    d = dataFromSource %>%
-        mutate(steps = ifelse(is.na(steps), as.integer(mean(steps, na.rm=TRUE)), steps))
-    return(d)
-}
-
+## loading and processing functions
 # load the full data source into a 'tmp' if not there already,
 #  and once it's there, if not test, use full data, else just use sample of the full data.
 # Note also storing into globals so that this method can easily be called repetitively.
@@ -78,34 +42,102 @@ loadCsvData <- function(dataFile,test,testSampleSize) {
     }
 }
 
+# build the data set for steps by day with NA
+buildDataDayNA <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(datePosix=ymd(date)) %>%
+        arrange(datePosix) %>%
+        group_by(datePosix) %>%
+        summarise(stepsTotal = sum(steps,na.rm=TRUE))
+    
+    return(d)
+}
+
+# build the data set for steps by interval with NA
+buildDataIntervalNA <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(datePosix=ymd(date)) %>%
+        arrange(interval) %>%
+        group_by(interval) %>%
+        summarise(meanIntervalSteps = mean(steps, na.rm=T))
+    
+    return(d)
+}
+
+# build with NA replace
+buildNoNAData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(steps = ifelse(is.na(steps), as.integer(mean(steps, na.rm=TRUE)), steps))
+    return(d)
+}
+
+## analysis plot functions
+# plot histogtram of mean total number of steps per day
+plotHistMeanStepsPerDay <- function(d) {
+    mn = mean(d$stepsTotal, na.rm=TRUE)
+    md = median(d$stepsTotal, na.rm=TRUE)
+    meanText = paste("Mean =", as.integer(mn))
+    medianText = paste("Median =", as.integer(md))
+    textDate = ymd(d$date[1])
+    textMedianY = max(d$stepsTotal)
+    textMeanY = textMedianY - (textMedianY * .05)
+    
+    p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
+        #         geom_smooth() +
+        # #         geom_line() +
+        geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
+        geom_abline(slope = 0, intercept = mn, color = "red") +
+        geom_abline(slope = 0, intercept = md, color = "blue") +
+        labs(list(x ="Date",y ="Number of Steps", title="Total Steps Per Day (NA's not removed)")) +
+        annotate("text", label = medianText, x = textDate, y = textMedianY, size = 4, colour = "blue", adj = 0) +
+        annotate("text", label = meanText, x = textDate, y = textMeanY, size = 4, colour = "red", adj = 0)
+    
+    return (p)
+}
+
+# plot time series of average daily activity pattern
+plotTimeSeriesMeanStepsPerDay <- function(d) {
+    mx = max(d$meanIntervalSteps, na.rm = TRUE)
+    # kind of iffy but get interval with max in it
+    tmp = d$interval[analysisNAData$meanIntervalSteps == mx]
+    mxInterval = tmp[!is.na(tmp)]
+    maxText = paste("Max =", mx, " Interval=", mxInterval)
+    textMaxX = d$interval[1]
+    textMaxY = mx - (mx * .05)
+    
+    p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
+        geom_line() +
+        geom_abline(slope = 0, intercept = mx, color = "red") +
+        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval (NA's not removed)")) +
+        annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0)
+    
+    return (p)
+}
+
 ## main
 main <- function() {
     # when testing data may not represent full set of data.
     # set test to TRUE when exploring data
     dataFile = "./activity.csv"
-    test = FALSE
     
     if (file.exists(dataFile)) {
         # load data as globals
-        loadCsvData(dataFile,test,1000)
-        
-        #         par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+        loadCsvData(dataFile,test=TRUE,testSampleSize=1000)
         
         #build analyis data
-        # want this to be a global so I can view it after a run
-        analysisNAData <<- buildNAData(WorkingDataFromSource)
-        stepsMean = mean(analysisNAData$stepsTotal, na.rm=TRUE)
-        stepsMedian = median(analysisNAData$stepsTotal, na.rm=TRUE)
+        analysisNAData <<- buildDataDayNA(WorkingDataFromSource)
+        p = plotOnScreen(plotHistMeanStepsPerDay, analysisNAData)
         
-        #plot on screen
-        p = plotOnScreen(plotHistMeanStepsPerDay, analysisNAData, stepsMean, stepsMedian)
+        analysisNAData <<- buildDataIntervalNA(WorkingDataFromSource)
+        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, analysisNAData)
+        
         
         #         analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
         #         analysisData <<- buildData(analysisNoNAData)
         #         p = plotOnScreen(analysisData)
         
         # create plot on file device, close when done
-#         plotOnDevice(p)
+        #         plotOnDevice(p)
         
         #         par(mfrow = c(1, 1))
     }
