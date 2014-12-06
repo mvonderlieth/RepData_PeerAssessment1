@@ -3,6 +3,8 @@ library(dplyr,warn.conflicts = F)
 library(tidyr)
 library(lubridate)
 library(ggplot2)
+library(grid)
+library(gridExtra)
 
 # main logic is in the main() function at the end of file
 ## support functions
@@ -10,6 +12,11 @@ library(ggplot2)
 plotOnScreen <- function(plotFunction,...) {
     p = plotFunction(...)
     print(p)
+    return(p)
+}
+
+plotJustGen <- function(plotFunction,...) {
+    p = plotFunction(...)
     return(p)
 }
 
@@ -43,7 +50,7 @@ loadCsvData <- function(dataFile,test,testSampleSize) {
 }
 
 # build the data set for steps by day with NA
-buildDataDayNA <- function(dataFromSource) {
+buildDataPerDay <- function(dataFromSource) {
     d = dataFromSource %>%
         mutate(datePosix=ymd(date)) %>%
         arrange(datePosix) %>%
@@ -54,7 +61,7 @@ buildDataDayNA <- function(dataFromSource) {
 }
 
 # build the data set for steps by interval with NA
-buildDataIntervalNA <- function(dataFromSource) {
+buildDataPerInterval <- function(dataFromSource) {
     d = dataFromSource %>%
         mutate(datePosix=ymd(date)) %>%
         arrange(interval) %>%
@@ -68,6 +75,27 @@ buildDataIntervalNA <- function(dataFromSource) {
 buildNoNAData <- function(dataFromSource) {
     d = dataFromSource %>%
         mutate(steps = ifelse(is.na(steps), as.integer(mean(steps, na.rm=TRUE)), steps))
+    return(d)
+}
+
+# build with NA replace
+buildWeekdayWeekendData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(weekend = (wday(date) == 1 | wday(date) == 7))
+    return(d)
+}
+
+# build with NA replace
+buildWeekdayData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        filter(weekend == FALSE)
+    return(d)
+}
+
+# build with NA replace
+buildWeekendData <- function(dataFromSource) {
+    d = dataFromSource %>%
+        filter(weekend == TRUE)
     return(d)
 }
 
@@ -122,18 +150,28 @@ main <- function() {
         loadCsvData(dataFile,test=FALSE,testSampleSize=1000)
         
         #build analyis data for mean steps per day
-        analysisData <<- buildDataDayNA(WorkingDataFromSource)
-        p = plotOnScreen(plotHistMeanStepsPerDay, analysisData, "NA's not removed")
+        stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
+        p = plotOnScreen(plotHistMeanStepsPerDay, stepsPerDayData, "NA's not removed")
 
         #build analysis data for mean steps per interval
-        analysisData <<- buildDataIntervalNA(WorkingDataFromSource)
-        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, analysisData)
+        stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
+        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
         
         #build analyis data for imputed missing value
-        analysisNoNAData <<- buildNoNAData(WorkingDataFromSource)
+        noNAData <<- buildNoNAData(WorkingDataFromSource)
         #NA's are removed but resuse method
-        analysisData <<- buildDataDayNA(analysisNoNAData)
-        p = plotOnScreen(plotHistMeanStepsPerDay, analysisData, "NA's removed")
+        stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
+        p = plotOnScreen(plotHistMeanStepsPerDay, stepsPerDayNoNAData, "NA's removed")
+        
+        weekdayWeekendData <<- buildWeekdayWeekendData(WorkingDataFromSource)
+        #need these or make factor and use lattice?
+        weekdayData <<- buildWeekdayData(weekdayWeekendData)
+        weekendData <<- buildWeekendData(weekdayWeekendData)    
+        weekdayStepsPerIntervalData <<- buildDataPerInterval(weekdayData)
+        p1 = plotJustGen(plotTimeSeriesMeanStepsPerDay, weekdayStepsPerIntervalData)
+        weekendStepsPerIntervalData <<- buildDataPerInterval(weekendData)
+        p2 = plotJustGen(plotTimeSeriesMeanStepsPerDay, weekendStepsPerIntervalData)
+        grid.arrange(p1,p2,ncol=1)    
     }
     else {
         warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
