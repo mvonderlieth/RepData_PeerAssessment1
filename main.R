@@ -49,7 +49,7 @@ buildDataPerDay <- function(dataFromSource) {
         mutate(datePosix=ymd(date)) %>%
         arrange(datePosix) %>%
         group_by(datePosix) %>%
-        summarise(stepsTotal = sum(steps,na.rm=TRUE))
+        summarise(stepsTotal = as.integer(sum(steps,na.rm=TRUE)))
     
     return(d)
 }
@@ -60,7 +60,7 @@ buildDataPerInterval <- function(dataFromSource) {
         mutate(datePosix = ymd(date)) %>%
         arrange(interval) %>%
         group_by(interval) %>%
-        summarise(meanIntervalSteps = mean(steps, na.rm=T))
+        summarise(meanIntervalSteps = as.integer(mean(steps, na.rm=T)))
     
     return(d)
 }
@@ -150,8 +150,9 @@ main <- function() {
         
         # build analyis data for mean steps per day and plot
         stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
-        addToTitleText = paste0("With NA's, number of breaks=",29)
-        justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, numBreaks=29)
+        numBrks = 10
+        addToTitleText = paste0("With NA's, number of breaks=",numBrks)
+        justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, numBreaks=numBrks)
         
         # build analysis data for mean steps per interval and plot
         stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
@@ -160,8 +161,8 @@ main <- function() {
         # build analyis data for imputed missing value and plot
         noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
         stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
-        addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean, number of breaks=",29)
-        p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=29)
+        addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean, number of breaks=",numBrks)
+        p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=numBrks)
 
         # build analyis data for weekend vs weekday and plot
         weekdayWeekendData <<- appendWeekdayWeekendData(WorkingDataFromSource)
