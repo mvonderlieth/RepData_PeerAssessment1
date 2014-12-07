@@ -15,18 +15,10 @@ plotOnScreen <- function(plotFunction,...) {
     return(p)
 }
 
-plotJustGen <- function(plotFunction,...) {
-    p = plotFunction(...)
-    return(p)
+# plot on screen
+justPlot <- function(plotFunction,...) {
+    plotFunction(...)
 }
-
-# plot to png file
-plotOnDevice <- function(p) {
-    png(filename = "./figure/hist1.png", width = 480, height = 480)
-    print(p)
-    dev.off()
-}
-
 
 ## loading and processing functions
 # load the full data source into a 'tmp' if not there already,
@@ -64,61 +56,55 @@ buildDataPerDay <- function(dataFromSource) {
 buildDataPerInterval <- function(dataFromSource) {
     d = dataFromSource %>%
         mutate(datePosix = ymd(date)) %>%
-        arrange(interval,weekend) %>%
-        group_by(interval,weekend) %>%
+        arrange(interval) %>%
+        group_by(interval) %>%
         summarise(meanIntervalSteps = mean(steps, na.rm=T))
     
     return(d)
 }
 
-# build with NA replace
-buildNoNAData <- function(dataFromSource) {
+# convert with NA replace
+convertStepsToNoNAData <- function(dataFromSource,intervalData) {
     d = dataFromSource %>%
-        mutate(steps = ifelse(is.na(steps), as.integer(mean(steps, na.rm=TRUE)), steps))
+        mutate(steps = ifelse(is.na(steps), intervalData$meanIntervalSteps, steps))
     return(d)
 }
 
-# build with NA replace
-buildWeekdayWeekendData <- function(dataFromSource) {
+
+# append weekend or weekday factor
+appendWeekdayWeekendData <- function(dataFromSource) {
     d = dataFromSource %>%
         mutate(weekend = ifelse(wday(date) == 1 | wday(date) == 7,"weekend","weekday"))
     return(d)
 }
 
-# build with NA replace
-buildWeekdayData <- function(dataFromSource) {
+# build the data set for steps by interval
+buildDataPerIntervalWeekend <- function(dataFromSource) {
     d = dataFromSource %>%
-        filter(weekend == FALSE)
-    return(d)
-}
+        mutate(datePosix = ymd(date)) %>%
+        arrange(interval,weekend) %>%
+        group_by(interval,weekend) %>%
+        summarise(meanIntervalSteps = mean(steps, na.rm=T))
 
-# build with NA replace
-buildWeekendData <- function(dataFromSource) {
-    d = dataFromSource %>%
-        filter(weekend == TRUE)
     return(d)
 }
 
 ## analysis plot functions
 # plot histogtram of mean total number of steps per day
-plotHistMeanStepsPerDay <- function(d, addToTitle) {
-    mn = mean(d$stepsTotal, na.rm=TRUE)
-    md = median(d$stepsTotal, na.rm=TRUE)
-    meanText = paste0("Mean = ", as.integer(mn))
-    medianText = paste0("Median = ", as.integer(md))
-    textDate = ymd(d$date[1])
-    textMedianY = max(d$stepsTotal)
-    textMeanY = textMedianY - (textMedianY * .05)
-    
-    p = ggplot(d, aes(x=datePosix, y=stepsTotal)) +
-        geom_histogram(stat="identity", color="black", fill="grey", alpha=I(.67)) +
-        geom_abline(slope = 0, intercept = mn, color = "red") +
-        geom_abline(slope = 0, intercept = md, color = "blue") +
-        labs(list(x ="Date",y ="Number of Steps", title=paste("Total Steps Per Day (",addToTitle, ")"))) +
-        annotate("text", label = medianText, x = textDate, y = textMedianY, size = 4, colour = "blue", adj = 0) +
-        annotate("text", label = meanText, x = textDate, y = textMeanY, size = 4, colour = "red", adj = 0)
-    
-    return (p)
+plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
+    mn = as.integer(mean(d$stepsTotal, na.rm=TRUE))
+    md = as.integer(median(d$stepsTotal, na.rm=TRUE))
+    meanText = paste0("Mean = ", mn)
+    medianText = paste0("Median = ", md)
+    mainText = paste0("Histogram ",addToTitle)
+    xmin = min(d$stepsTotal)
+    xmax = max(d$stepsTotal)
+    xdist = c(xmin,xmax)
+    stepsCol = "#0000FF88"
+
+    hist(d$stepsTotal, xlim=xdist, xlab="Steps Per Day", main=mainText, col=stepsCol, ylim=c(0,20), breaks=numBreaks)
+    legend("topright", legend=c(meanText,medianText), fill=c("red","blue"), box.lwd = 0, box.col = "red")
+    abline(v=c(mn,md),col=c("red","blue"))
 }
 
 # plot time series of average daily activity pattern
@@ -126,14 +112,14 @@ plotTimeSeriesMeanStepsPerDay <- function(d) {
     mx = max(d$meanIntervalSteps, na.rm = TRUE)
     tmp = d$interval[d$meanIntervalSteps == mx]
     mxInterval = tmp[!is.na(tmp)]
-    maxText = paste0("Max = ", as.integer(mx), ", Interval = ", mxInterval)
+    maxText = paste0("Max = ", as.integer(mx), " at interval = ", mxInterval)
     textMaxX = d$interval[1]
     textMaxY = mx - (mx * .05)
     
     p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
         geom_line() +
-        geom_abline(slope = 0, intercept = mx, color = "red") +
-        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval (NA's not removed)")) +
+        geom_abline(slope = 0, intercept = mx, color = "blue") +
+        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval (NA's not replaced)")) +
         annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0)
     
     return (p)
@@ -145,7 +131,7 @@ plotTimeSeriesWeekend <- function(d) {
         geom_line() +
         facet_grid(weekend ~ .) +
         labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend"))
-
+    
     return (p)
 }
 
@@ -156,36 +142,30 @@ main <- function() {
     dataFile = "./activity.csv"
     
     if (file.exists(dataFile)) {
+        
         # load data as globals
         loadCsvData(dataFile,test=FALSE,testSampleSize=1000)
         
-#         #build analyis data for mean steps per day
+        # build analyis data for mean steps per day and plot
         stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
-#         p = plotOnScreen(plotHistMeanStepsPerDay, stepsPerDayData, "NA's not removed")
-# 
-#         #build analysis data for mean steps per interval
-#         stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
-#         p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
-#         
-#         #build analyis data for imputed missing value
-#         noNAData <<- buildNoNAData(WorkingDataFromSource)
-#         #NA's are removed but resuse method
-#         stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
-#         p = plotOnScreen(plotHistMeanStepsPerDay, stepsPerDayNoNAData, "NA's removed")
+        addToTitleText = paste0("With NA's, number of breaks=",29)
+        justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, numBreaks=29)
         
-        weekdayWeekendData <<- buildWeekdayWeekendData(WorkingDataFromSource)
-#work?
-        weekdayWeekendStepsPerIntervalData <<- buildDataPerInterval(weekdayWeekendData)
+        # build analysis data for mean steps per interval and plot
+        stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
+        p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
+        
+        # build analyis data for imputed missing value and plot
+        noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
+        stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
+        addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean, number of breaks=",29)
+        p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=29)
+
+        # build analyis data for weekend vs weekday and plot
+        weekdayWeekendData <<- appendWeekdayWeekendData(WorkingDataFromSource)
+        weekdayWeekendStepsPerIntervalData <<- buildDataPerIntervalWeekend(weekdayWeekendData)
         p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
-#end work?
-        #need these or make factor and use lattice?
-#         weekdayData <<- buildWeekdayData(weekdayWeekendData)
-#         weekendData <<- buildWeekendData(weekdayWeekendData)    
-#         weekdayStepsPerIntervalData <<- buildDataPerInterval(weekdayData)
-#         p1 = plotJustGen(plotTimeSeriesMeanStepsPerDay, weekdayStepsPerIntervalData)
-#         weekendStepsPerIntervalData <<- buildDataPerInterval(weekendData)
-#         p2 = plotJustGen(plotTimeSeriesMeanStepsPerDay, weekendStepsPerIntervalData)
-#         grid.arrange(p1,p2,ncol=1)    
+        
     } else {
         warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
     }
@@ -193,3 +173,4 @@ main <- function() {
 
 ### run main
 main()
+# knit2html("PA1_template.Rmd")
