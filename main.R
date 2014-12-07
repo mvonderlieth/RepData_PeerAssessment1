@@ -24,7 +24,9 @@ justPlot <- function(plotFunction,...) {
 # load the full data source into a 'tmp' if not there already,
 #  and once it's there, if not test, use full data, else just use sample of the full data.
 # Note also storing into globals so that this method can easily be called repetitively.
-loadCsvData <- function(dataFile,test,testSampleSize) {
+loadCsvData <- function(zipFile,dataFile,test,testSampleSize) {
+    unzip(zipFile)
+    
     if (!exists("FullDataFromSource")) {
         FullDataFromSource <<- read.csv(dataFile)
     }
@@ -139,12 +141,12 @@ plotTimeSeriesWeekend <- function(d) {
 main <- function() {
     # when testing data may not represent full set of data.
     # set test to TRUE when exploring data
-    dataFile = "./activity.csv"
+    zipFile = "./activity.zip"
     
-    if (file.exists(dataFile)) {
+    if (file.exists(zipFile)) {
         
         # load data as globals
-        loadCsvData(dataFile,test=FALSE,testSampleSize=1000)
+        loadCsvData(zipFile,dataFile="./activity.csv",test=FALSE,testSampleSize=1000)
         
         # build analyis data for mean steps per day and plot
         stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
@@ -167,7 +169,7 @@ main <- function() {
         p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
         
     } else {
-        warning (paste("The data file",dataFile,"doesn't exist, make sure to set the working directory!"))
+        warning (paste("The data file",zipFile,"doesn't exist, make sure to set the working directory!"))
     }
 }
 
