@@ -1,10 +1,22 @@
 ---
+author: "mvonderlieth (Mark von der Lieth)"
+date: "December 7, 2014"
 output:
   html_document:
     fig_height: 4
     keep_md: yes
 ---
+
 # Introduction
+This is my submittal for the Programming Assignment 1 for the Reproducible Research Course.
+Please see that page for a description of the assignment and data, https://github.com/rdpeng/RepData_PeerAssessment1 .
+
+### Peer Reviewer Notes
+First, thanks for the time.
+Second, Please note that I included functions in the loading and preprocessing section that I use a lot in all my R projects.
+Each section includes functions for that section and then the R code that uses them.
+I included some function params so that that caller has some flexibility in output without modifying the functions themselves.
+I included all the reporting information in the plots themselves as best I could, vs. outputting to the console, etc.
 
 ## Loading and preprocessing the data
 
@@ -69,6 +81,7 @@ if (file.exists(zipFile)) {
 
 ## What is mean total number of steps taken per day?
 
+To answer this, plot a histogram of the steps taken per day and report the mean and median of the total steps taken per day.
 
 ```{r}
 # build the data set for steps by day with NA
@@ -108,10 +121,10 @@ justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, nu
 
 ```
 
-
-
-
 ## What is the average daily activity pattern?
+
+To answer this, create a time series plot of the 5-minute interval along with the interval that has the maximum number of steps.
+
 ```{r}
 # build the data set for steps by interval with NA
 buildDataPerInterval <- function(dataFromSource) {
@@ -148,9 +161,16 @@ p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
 
 ```
 
-
-
 ## Imputing missing values
+
+Calculate and report the number of NAs, replace them with a mean of the steps per interval, and plot a histogram as in question 1.
+
+In answer to the question of does this make a difference and does it make an impact, after reviewing both plots,
+it does make a bit of difference of course since there are now values for the missing 2000 or so NA's.
+
+But the impact does not seem that significant because of the percentage is NA's medium to small, and there are many
+observations where the number of steps is 0, so any mean derived from that will have little impact across the
+whole range, noting that it did seem to even out the lower ranges around 0!
 
 ```{r}
 # convert with NA replace
@@ -171,6 +191,9 @@ p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitle
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+To answer this, create a plot with the dataset from question 3, add factors for weekend and weekday, and plot the the 5-minute intervals in a panel plot.
+
 ```{r}
 # append weekend or weekday factor
 appendWeekdayWeekendData <- function(dataFromSource) {
