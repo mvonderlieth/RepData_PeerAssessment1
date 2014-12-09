@@ -101,7 +101,7 @@ plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
     xmin = min(d$stepsTotal)
     xmax = max(d$stepsTotal)
     xdist = c(xmin,xmax)
-    stepsCol = "#0000FF88"
+    stepsCol = "#00FF0066"
 
     hist(d$stepsTotal, xlim=xdist, xlab="Steps Per Day", main=mainText, col=stepsCol, ylim=c(0,20), breaks=numBreaks)
     legend("topright", legend=c(meanText,medianText), fill=c("red","blue"), box.lwd = 0, box.col = "red")
@@ -110,6 +110,7 @@ plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
 
 # plot time series of average daily activity pattern
 plotTimeSeriesMeanStepsPerDay <- function(d) {
+    # calc and report max
     mx = max(d$meanIntervalSteps, na.rm = TRUE)
     tmp = d$interval[d$meanIntervalSteps == mx]
     mxInterval = tmp[!is.na(tmp)]
@@ -130,7 +131,7 @@ plotTimeSeriesMeanStepsPerDay <- function(d) {
 plotTimeSeriesWeekend <- function(d) {
     p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
         geom_line() +
-        facet_grid(weekend ~ .) +
+        facet_wrap(~weekend,ncol=1) +
         labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend"))
     
     return (p)
@@ -149,8 +150,8 @@ main <- function() {
         
         # build analyis data for mean steps per day and plot
         stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
-        numBrks = 10
-        addToTitleText = paste0("With NA's, number of breaks=",numBrks)
+        numBrks = 16
+        addToTitleText = paste0("With NA's")
         justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, numBreaks=numBrks)
         
         # build analysis data for mean steps per interval and plot
@@ -160,11 +161,11 @@ main <- function() {
         # build analyis data for imputed missing value and plot
         noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
         stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
-        addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean, number of breaks=",numBrks)
+        addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean")
         p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=numBrks)
 
         # build analyis data for weekend vs weekday and plot
-        weekdayWeekendData <<- appendWeekdayWeekendData(WorkingDataFromSource)
+        weekdayWeekendData <<- appendWeekdayWeekendData(noNAData)
         weekdayWeekendStepsPerIntervalData <<- buildDataPerIntervalWeekend(weekdayWeekendData)
         p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
         

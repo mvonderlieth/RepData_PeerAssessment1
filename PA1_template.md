@@ -6,11 +6,14 @@ This is my submittal for the Programming Assignment 1 for the Reproducible Resea
 Please see that page for a description of the assignment and data, https://github.com/rdpeng/RepData_PeerAssessment1 .
 
 ### Peer Reviewer Notes
-First, thanks for the time.
-Second, Please note that I included functions in the loading and preprocessing section that I use a lot in all my R projects.
-Each section includes functions for that section and then the R code that uses them.
-I included some function params so that that caller has some flexibility in output without modifying the functions themselves.
-I included all the reporting information in the plots themselves as best I could, vs. outputting to the console, etc.
+
+Please note that the version of knitr I have doesn't create the figures folder but instead creates a folder named after this file.  The images are in there.
+
+I included functions in the loading and preprocessing section that I use a lot in all my R projects.
+Each section includes functions for that section and then the R code that uses them.  Also I included some function params so that that caller has some flexibility in output without modifying the functions themselves.
+I included all the reporting information in the plots themselves as best I could, vs. outputting to the console, etc.  All the code as developed is in main.R.
+
+And thanks for your time.
 
 ## Loading and preprocessing the data
 
@@ -101,7 +104,7 @@ plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
     xmin = min(d$stepsTotal)
     xmax = max(d$stepsTotal)
     xdist = c(xmin,xmax)
-    stepsCol = "#0000FF88"
+    stepsCol = "#00FF0066"
 
     hist(d$stepsTotal, xlim=xdist, xlab="Steps Per Day", main=mainText, col=stepsCol, ylim=c(0,20), breaks=numBreaks)
     legend("topright", legend=c(meanText,medianText), fill=c("red","blue"), box.lwd = 0, box.col = "red")
@@ -110,7 +113,7 @@ plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
 
 # build analyis data for mean steps per day and plot
 stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
-numBrks = 10
+numBrks = 16
 addToTitleText = paste0("With NA's")
 justPlot(plotHistMeanStepsPerDay, stepsPerDayData, addToTitle=addToTitleText, numBreaks=numBrks)
 ```
@@ -164,11 +167,7 @@ p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
 Calculate and report the number of NAs, replace them with a mean of the steps per interval, and plot a histogram as in question 1.
 
 In answer to the question of does this make a difference and does it make an impact, after reviewing both plots,
-it does make a bit of difference of course since there are now values for the missing 2000 or so NA's.
-
-But the impact does not seem that significant because of the percentage is NA's medium to small, and there are many
-observations where the number of steps is 0, so any mean derived from that will have little impact across the
-whole range, noting that it did seem to even out the lower ranges around 0!
+it does make a bit of difference of course since there are now values for the missing 2000 or so NA's.  It did reduce the number associate with less the 500 stepes per day and did increase the number of steps in the 10,000 to 11,000 steps per day.  And so it did bring the mean closer to the median, but it still would have been nicer to have had real values.
 
 
 ```r
@@ -218,14 +217,14 @@ buildDataPerIntervalWeekend <- function(dataFromSource) {
 plotTimeSeriesWeekend <- function(d) {
     p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
         geom_line() +
-        facet_grid(weekend ~ .) +
+        facet_wrap(~weekend,ncol=1) +
         labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend"))
 
     return (p)
 }
 
 # build analyis data for weekend vs weekday and plot
-weekdayWeekendData <<- appendWeekdayWeekendData(WorkingDataFromSource)
+weekdayWeekendData <<- appendWeekdayWeekendData(noNAData)
 weekdayWeekendStepsPerIntervalData <<- buildDataPerIntervalWeekend(weekdayWeekendData)
 p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
 ```
