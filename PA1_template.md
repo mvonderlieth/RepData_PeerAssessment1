@@ -167,7 +167,7 @@ p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
 Calculate and report the number of NAs, replace them with a mean of the steps per interval, and plot a histogram as in question 1.
 
 In answer to the question of does this make a difference and does it make an impact, after reviewing both plots,
-it does make a bit of difference of course since there are now values for the missing 2000 or so NA's.  It did reduce the number associate with less the 500 stepes per day and did increase the number of steps in the 10,000 to 11,000 steps per day.  And so it did bring the mean closer to the median, but it still would have been nicer to have had real values.
+it does make a bit of difference of course since there are now values for the missing 2000 or so NA's.  It did reduce the number associated with less then 1000 steps per day and subsequently did increase the number of steps in the 10,000 to 11,000 steps per day.  And so it did bring the mean closer to the median, a better feel for what could have happened, but it still would have been nicer to have had real values.
 
 
 ```r
