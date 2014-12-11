@@ -180,7 +180,7 @@ convertStepsToNoNAData <- function(dataFromSource,intervalData) {
 
 # build analyis data for imputed missing value and plot
 noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
-# resuse build and plot functions from above
+# reuse build and plot functions from above
 stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
 addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean")
 p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=numBrks)
@@ -229,4 +229,4 @@ p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
 
 ```
 
-### Conclusions
+#### The End
