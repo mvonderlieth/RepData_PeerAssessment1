@@ -54,11 +54,18 @@ buildDataPerDay <- function(dataFromSource) {
 }
 
 # build the data set for steps by interval with NA
+convertIntervalToTime <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(intervalTime = as.POSIXct(strptime(sprintf("%04s",interval),format="%H%M"),format="%H%M"))
+    
+    return(d)
+}
+
+# build the data set for steps by interval with NA
 buildDataPerInterval <- function(dataFromSource) {
     d = dataFromSource %>%
-        mutate(datePosix = ymd(date)) %>%
-        arrange(interval) %>%
-        group_by(interval) %>%
+        arrange(intervalTime) %>%
+        group_by(intervalTime) %>%
         summarise(meanIntervalSteps = as.integer(mean(steps, na.rm=T)))
     
     return(d)
@@ -82,9 +89,8 @@ appendWeekdayWeekendData <- function(dataFromSource) {
 # build the data set for steps by interval
 buildDataPerIntervalWeekend <- function(dataFromSource) {
     d = dataFromSource %>%
-        mutate(datePosix = ymd(date)) %>%
-        arrange(interval,weekend) %>%
-        group_by(interval,weekend) %>%
+        arrange(intervalTime,weekend) %>%
+        group_by(intervalTime,weekend) %>%
         summarise(meanIntervalSteps = mean(steps, na.rm=T))
 
     return(d)
@@ -114,25 +120,27 @@ plotTimeSeriesMeanStepsPerDay <- function(d) {
     mx = max(d$meanIntervalSteps, na.rm = TRUE)
     tmp = d$interval[d$meanIntervalSteps == mx]
     mxInterval = tmp[!is.na(tmp)]
-    maxText = paste0("Max = ", as.integer(mx), " at interval = ", mxInterval)
+    maxText = paste0("Max = ", as.integer(mx), " at interval = ", format(mxInterval,"%H:%M"))
     textMaxX = d$interval[1]
     textMaxY = mx - (mx * .05)
     
-    p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
+    p = ggplot(d, aes(x=intervalTime, y=meanIntervalSteps)) +
         geom_line() +
         geom_abline(slope = 0, intercept = mx, color = "blue") +
         labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval (NA's not replaced)")) +
-        annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0)
+        annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0) +
+        scale_x_datetime(labels = date_format("%H:%M"))
     
     return (p)
 }
 
 # plot time series of activity patterns between weekdays and weekends
 plotTimeSeriesWeekend <- function(d) {
-    p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
+    p = ggplot(d, aes(x=intervalTime, y=meanIntervalSteps)) +
         geom_line() +
         facet_wrap(~weekend,ncol=1) +
-        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend"))
+        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend")) +
+        scale_x_datetime(labels = date_format("%H:%M"))
     
     return (p)
 }
@@ -148,6 +156,8 @@ main <- function() {
         # load data as globals
         loadCsvData(zipFile,dataFile="./activity.csv",test=FALSE,testSampleSize=1000)
         
+        WorkingDataFromSource <<- convertIntervalToTime(WorkingDataFromSource)
+        
         # build analyis data for mean steps per day and plot
         stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
         numBrks = 16
@@ -158,7 +168,7 @@ main <- function() {
         stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
         p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
         
-        # build analyis data for imputed missing value and plot
+#         # build analyis data for imputed missing value and plot
         noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
         stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
         addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean")
