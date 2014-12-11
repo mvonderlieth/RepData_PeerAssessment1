@@ -1,6 +1,6 @@
 ---
 author: "mvonderlieth (Mark von der Lieth)"
-date: "December 7, 2014"
+date: "December 10, 2014"
 output:
   html_document:
     keep_md: yes

@@ -1,5 +1,5 @@
 mvonderlieth (Mark von der Lieth)  
-December 7, 2014  
+December 10, 2014  
 
 # Introduction
 This is my submittal for the Programming Assignment 1 for the Reproducible Research Course.
