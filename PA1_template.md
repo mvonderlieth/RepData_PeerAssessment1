@@ -7,7 +7,7 @@ Please see that page for a description of the assignment and data, https://githu
 
 ### Peer Reviewer Notes
 
-Please note that the version of knitr I have doesn't create the figures folder but instead creates a folder named after this file.  The images are in there.
+Please note that the version of knitr I have doesn't create the figures folder but instead creates a folder named after this file: ./PA1_template_files/figure-html.  The images are in there.
 
 I included functions in the loading and preprocessing section that I use a lot in all my R projects.
 Each section includes functions for that section and then the R code that uses them.  Also I included some function params so that that caller has some flexibility in output without modifying the functions themselves.
