@@ -24,6 +24,7 @@ library(dplyr,warn.conflicts = F)
 library(tidyr)
 library(lubridate)
 library(ggplot2)
+library(scales)
 
 
 # main logic is in the main() function at the end of file
@@ -38,6 +39,14 @@ plotOnScreen <- function(plotFunction,...) {
 # plot on screen
 justPlot <- function(plotFunction,...) {
     plotFunction(...)
+}
+
+# convert the data set interval as a time with todays date, also still has NA's
+convertIntervalToTime <- function(dataFromSource) {
+    d = dataFromSource %>%
+        mutate(intervalTime = as.POSIXct(strptime(sprintf("%04s",interval),format="%H%M"),format="%H%M"))
+
+    return(d)
 }
 
 ## loading and processing functions
@@ -63,18 +72,19 @@ loadCsvData <- function(zipFile,dataFile,test,testSampleSize) {
     }
 }
 
-# when testing data may not represent full set of data.
+# when testing, data may not represent full set of data.
 # set test to TRUE when exploring data
 zipFile = "./activity.zip"
 
 if (file.exists(zipFile)) {
     # load data as globals
     loadCsvData(zipFile,dataFile="./activity.csv",test=FALSE,testSampleSize=1000)
+
+    WorkingDataFromSource <<- convertIntervalToTime(WorkingDataFromSource)
 } else {
     stop (paste("The data file",zipFile,"doesn't exist, make sure to set the working directory!"))
 }
 ```
-
 
 ## What is mean total number of steps taken per day?
 
@@ -111,7 +121,7 @@ plotHistMeanStepsPerDay <- function(d, addToTitle = "", numBreaks=10) {
     abline(v=c(mn,md),col=c("red","blue"))
 }
 
-# build analyis data for mean steps per day and plot
+# analyze data for mean steps per day and plot
 stepsPerDayData <<- buildDataPerDay(WorkingDataFromSource)
 numBrks = 16
 addToTitleText = paste0("With NA's")
@@ -129,33 +139,35 @@ To answer this, create a time series plot of the 5-minute interval along with th
 # build the data set for steps by interval with NA
 buildDataPerInterval <- function(dataFromSource) {
     d = dataFromSource %>%
-        mutate(datePosix = ymd(date)) %>%
-        arrange(interval) %>%
-        group_by(interval) %>%
+        arrange(intervalTime) %>%
+        group_by(intervalTime) %>%
         summarise(meanIntervalSteps = as.integer(mean(steps, na.rm=T)))
 
     return(d)
 }
 
 # plot time series of average daily activity pattern
+# full date will not be labeled, just the hours and mins
+# also calc and report the max at interval
 plotTimeSeriesMeanStepsPerDay <- function(d) {
     mx = max(d$meanIntervalSteps, na.rm = TRUE)
     tmp = d$interval[d$meanIntervalSteps == mx]
     mxInterval = tmp[!is.na(tmp)]
-    maxText = paste0("Max = ", as.integer(mx), " at interval = ", mxInterval)
+    maxText = paste0("Max = ", as.integer(mx), " at interval = ", format(mxInterval,"%H:%M"))
     textMaxX = d$interval[1]
     textMaxY = mx - (mx * .05)
 
-    p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
+    p = ggplot(d, aes(x=intervalTime, y=meanIntervalSteps)) +
         geom_line() +
         geom_abline(slope = 0, intercept = mx, color = "blue") +
         labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval (NA's not replaced)")) +
-        annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0)
+        annotate("text", label = maxText, x = textMaxX, y = textMaxY, size = 4, colour = "blue", adj = 0) +
+        scale_x_datetime(labels = date_format("%H:%M"))
 
     return (p)
 }
 
-# build analysis data for mean steps per interval and plot
+# analyze data for mean steps per interval and plot
 stepsPerIntervalData <<- buildDataPerInterval(WorkingDataFromSource)
 p = plotOnScreen(plotTimeSeriesMeanStepsPerDay, stepsPerIntervalData)
 ```
@@ -178,9 +190,9 @@ convertStepsToNoNAData <- function(dataFromSource,intervalData) {
     return(d)
 }
 
-# build analyis data for imputed missing value and plot
-noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
+# analyze data for imputed missing value and plot
 # reuse build and plot functions from above
+noNAData <<- convertStepsToNoNAData(WorkingDataFromSource,stepsPerIntervalData)
 stepsPerDayNoNAData <<- buildDataPerDay(noNAData)
 addToTitleText = paste0("With ",sum(is.na(WorkingDataFromSource$steps))," NA's replaced with mean")
 p = justPlot(plotHistMeanStepsPerDay, stepsPerDayNoNAData, addToTitle=addToTitleText, numBreaks=numBrks)
@@ -205,9 +217,8 @@ appendWeekdayWeekendData <- function(dataFromSource) {
 # build the data set for steps by interval
 buildDataPerIntervalWeekend <- function(dataFromSource) {
     d = dataFromSource %>%
-        mutate(datePosix = ymd(date)) %>%
-        arrange(interval,weekend) %>%
-        group_by(interval,weekend) %>%
+        arrange(intervalTime,weekend) %>%
+        group_by(intervalTime,weekend) %>%
         summarise(meanIntervalSteps = mean(steps, na.rm=T))
 
     return(d)
@@ -215,15 +226,16 @@ buildDataPerIntervalWeekend <- function(dataFromSource) {
 
 # plot time series of activity patterns between weekdays and weekends
 plotTimeSeriesWeekend <- function(d) {
-    p = ggplot(d, aes(x=interval, y=meanIntervalSteps)) +
+    p = ggplot(d, aes(x=intervalTime, y=meanIntervalSteps)) +
         geom_line() +
         facet_wrap(~weekend,ncol=1) +
-        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend"))
+        labs(list(x ="Interval",y ="Mean of Steps", title="Total Steps Per Interval Weekday vs Weekend")) +
+        scale_x_datetime(labels = date_format("%H:%M"))
 
     return (p)
 }
 
-# build analyis data for weekend vs weekday and plot
+# analyze data for weekend vs weekday and plot
 weekdayWeekendData <<- appendWeekdayWeekendData(noNAData)
 weekdayWeekendStepsPerIntervalData <<- buildDataPerIntervalWeekend(weekdayWeekendData)
 p = plotOnScreen(plotTimeSeriesWeekend, weekdayWeekendStepsPerIntervalData)
